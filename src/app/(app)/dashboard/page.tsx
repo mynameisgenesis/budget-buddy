@@ -39,6 +39,13 @@ export default async function DashboardPage() {
     .order("transaction_date", { ascending: false })
     .limit(8);
 
+  const { data: categories } = await supabase
+    .from("categories")
+    .select("id, name, type, monthly_budget")
+    .eq("user_id", user.id)
+    .eq("type", "expense")
+    .order("name");
+
   const income =
     transactions
       ?.filter((t) => t.type === "income")
@@ -50,6 +57,27 @@ export default async function DashboardPage() {
       .reduce((sum, t) => sum + Number(t.amount), 0) ?? 0;
 
   const remaining = income - expenses;
+
+  const budgetRows =
+    categories?.map((category) => {
+      const actual =
+        transactions
+          ?.filter(
+            (t) => t.categories?.name === category.name && t.type === "expense",
+          )
+          .reduce((sum, t) => sum + Number(t.amount), 0) ?? 0;
+
+      const budget = Number(category.monthly_budget);
+      const remaining = budget - actual;
+
+      return {
+        id: category.id,
+        name: category.name,
+        budget,
+        actual,
+        remaining,
+      };
+    }) ?? [];
 
   return (
     <main className="min-h-screen p-6 space-y-6">
@@ -137,6 +165,56 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <p className="text-muted-foreground">No transactions yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Budget vs Actual</CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            {budgetRows.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2">Category</th>
+                      <th className="text-right py-2">Budget</th>
+                      <th className="text-right py-2">Actual</th>
+                      <th className="text-right py-2">Remaining</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {budgetRows.map((row) => (
+                      <tr key={row.id} className="border-b">
+                        <td className="py-2">{row.name}</td>
+                        <td className="text-right py-2">
+                          ${row.budget.toFixed(2)}
+                        </td>
+                        <td className="text-right py-2">
+                          ${row.actual.toFixed(2)}
+                        </td>
+                        <td
+                          className={`text-right py-2 font-medium ${
+                            row.remaining < 0
+                              ? "text-red-600"
+                              : "text-green-600"
+                          }`}
+                        >
+                          ${row.remaining.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                No expense categories yet.
+              </p>
             )}
           </CardContent>
         </Card>
