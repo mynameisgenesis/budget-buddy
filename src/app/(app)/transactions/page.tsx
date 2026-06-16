@@ -19,6 +19,7 @@ async function createTransaction(formData: FormData) {
   const description = formData.get("description") as string;
   const transactionDate = formData.get("transactionDate") as string;
   const type = formData.get("type") as string;
+  const merchant = formData.get("merchant") as string;
 
   const { error } = await supabase.from("transactions").insert({
     user_id: user.id,
@@ -27,6 +28,7 @@ async function createTransaction(formData: FormData) {
     description,
     transaction_date: transactionDate,
     type,
+    merchant,
   });
 
   if (error) {
@@ -88,11 +90,7 @@ export default async function TransactionsPage() {
 
         <div>
           <label>Type</label>
-          <select
-            name="type"
-            className="w-full border rounded p-2"
-            required
-          >
+          <select name="type" className="w-full border rounded p-2" required>
             <option value="expense">Expense</option>
             <option value="income">Income</option>
           </select>
@@ -110,16 +108,19 @@ export default async function TransactionsPage() {
 
         <div>
           <label>Description</label>
+          <input name="description" className="w-full border rounded p-2" />
+        </div>
+
+        <div>
+          <label>Merchant</label>
           <input
-            name="description"
+            name="merchant"
             className="w-full border rounded p-2"
+            placeholder="Walmart, Costco, Mortgage, etc."
           />
         </div>
 
-        <button
-          type="submit"
-          className="bg-black text-white px-4 py-2 rounded"
-        >
+        <button type="submit" className="bg-black text-white px-4 py-2 rounded">
           Save Transaction
         </button>
       </form>
