@@ -18,6 +18,8 @@ export default function CategoriesPage() {
   const [type, setType] = useState<"income" | "expense">("expense");
   const [budget, setBudget] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingBudget, setEditingBudget] = useState("");
 
   async function loadCategories() {
     const { data, error } = await supabase
@@ -94,6 +96,27 @@ export default function CategoriesPage() {
     );
   }
 
+  async function updateBudget(categoryId: string) {
+    const { data, error } = await supabase
+      .from("categories")
+      .update({ monthly_budget: Number(editingBudget) })
+      .eq("id", categoryId)
+      .select()
+      .single();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setCategories((current) =>
+      current.map((category) => (category.id === categoryId ? data : category)),
+    );
+
+    setEditingId(null);
+    setEditingBudget("");
+  }
+
   useEffect(() => {
     loadCategories();
   }, []);
@@ -159,7 +182,37 @@ export default function CategoriesPage() {
                 <td className="p-3">{category.name}</td>
                 <td className="p-3 capitalize">{category.type}</td>
                 <td className="p-3">
-                  ${Number(category.monthly_budget).toFixed(2)}
+                  {editingId === category.id ? (
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="border rounded p-1 w-28"
+                      value={editingBudget}
+                      onChange={(e) => setEditingBudget(e.target.value)}
+                      onBlur={() => updateBudget(category.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateBudget(category.id);
+                        }
+
+                        if (e.key === "Escape") {
+                          setEditingId(null);
+                          setEditingBudget("");
+                        }
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setEditingId(category.id);
+                        setEditingBudget(String(category.monthly_budget));
+                      }}
+                      className="hover:underline"
+                    >
+                      ${Number(category.monthly_budget).toFixed(2)}
+                    </button>
+                  )}
                 </td>
                 <td className="p-3">
                   <button
