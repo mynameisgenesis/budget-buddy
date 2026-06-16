@@ -21,9 +21,23 @@ export default async function DashboardPage() {
 
   const { data: transactions } = await supabase
     .from("transactions")
-    .select("amount, type, transaction_date")
+    .select(
+      `
+    id,
+    amount,
+    type,
+    description,
+    merchant,
+    transaction_date,
+    categories (
+      name
+    )
+  `,
+    )
     .eq("user_id", user.id)
-    .gte("transaction_date", startDate);
+    .gte("transaction_date", startDate)
+    .order("transaction_date", { ascending: false })
+    .limit(8);
 
   const income =
     transactions
@@ -80,6 +94,50 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="text-3xl font-bold">
             ${remaining.toFixed(2)}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Transactions</CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            {transactions && transactions.length > 0 ? (
+              <div className="space-y-3">
+                {transactions.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between border-b pb-2"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {transaction.merchant ||
+                          transaction.description ||
+                          transaction.categories?.name ||
+                          "Transaction"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {transaction.transaction_date} ·{" "}
+                        {transaction.categories?.name ?? "Uncategorized"}
+                      </p>
+                    </div>
+
+                    <p
+                      className={
+                        transaction.type === "income"
+                          ? "font-semibold text-green-600"
+                          : "font-semibold text-red-600"
+                      }
+                    >
+                      {transaction.type === "income" ? "+" : "-"}$
+                      {Number(transaction.amount).toFixed(2)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No transactions yet.</p>
+            )}
           </CardContent>
         </Card>
       </div>
