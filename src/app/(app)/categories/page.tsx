@@ -66,12 +66,32 @@ export default function CategoriesPage() {
     }
 
     setCategories((current) =>
-      [...current, data].sort((a, b) => a.name.localeCompare(b.name))
+      [...current, data].sort((a, b) => a.name.localeCompare(b.name)),
     );
 
     setName("");
     setType("expense");
     setBudget("");
+  }
+
+  async function deleteCategory(categoryId: string) {
+    const confirmed = confirm("Delete this category?");
+
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", categoryId);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setCategories((current) =>
+      current.filter((category) => category.id !== categoryId),
+    );
   }
 
   useEffect(() => {
@@ -129,6 +149,7 @@ export default function CategoriesPage() {
               <th className="text-left p-3">Name</th>
               <th className="text-left p-3">Type</th>
               <th className="text-left p-3">Budget</th>
+              <th className="text-left p-3">Actions</th>
             </tr>
           </thead>
 
@@ -139,6 +160,14 @@ export default function CategoriesPage() {
                 <td className="p-3 capitalize">{category.type}</td>
                 <td className="p-3">
                   ${Number(category.monthly_budget).toFixed(2)}
+                </td>
+                <td className="p-3">
+                  <button
+                    onClick={() => deleteCategory(category.id)}
+                    className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
