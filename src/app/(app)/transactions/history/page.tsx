@@ -2,18 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-
-type Transaction = {
-  id: string;
-  amount: number;
-  type: "income" | "expense";
-  merchant: string | null;
-  description: string | null;
-  transaction_date: string;
-  categories: {
-    name: string;
-  } | null;
-};
+import { Transaction } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 
 export default function TransactionHistoryPage() {
   const supabase = createClient();
@@ -47,12 +37,14 @@ export default function TransactionHistoryPage() {
       return;
     }
 
-    // Supabase may return a categories array; normalize to single category or null
+    // Normalize categories to an array (may be empty)
     const normalized = (data ?? []).map((d: any) => ({
       ...d,
       categories: Array.isArray(d.categories)
-        ? (d.categories[0] ?? null)
-        : (d.categories ?? null),
+        ? d.categories
+        : d.categories
+          ? [d.categories]
+          : [],
     }));
 
     setTransactions(normalized as Transaction[]);
@@ -110,9 +102,11 @@ export default function TransactionHistoryPage() {
     const normalizedData = {
       ...data,
       categories: Array.isArray(data?.categories)
-        ? (data.categories[0] ?? null)
-        : (data?.categories ?? null),
-    } as Transaction;
+        ? data.categories
+        : data?.categories
+          ? [data.categories]
+          : [],
+    } as unknown as Transaction;
 
     setTransactions((current: Transaction[]) =>
       current.map((transaction: Transaction) =>
@@ -127,10 +121,14 @@ export default function TransactionHistoryPage() {
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((transaction) => {
+      const categoryText = (transaction.categories || [])
+        .map((c: any) => c.name)
+        .join(" ");
+
       const text = [
         transaction.merchant,
         transaction.description,
-        transaction.categories?.name,
+        categoryText,
         transaction.amount,
         transaction.transaction_date,
       ]
@@ -199,7 +197,18 @@ export default function TransactionHistoryPage() {
                   )}
                 </td>
                 <td className="p-3">
-                  {transaction.categories?.name || "Uncategorized"}
+                  {transaction.categories &&
+                  transaction.categories.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {transaction.categories.map((cat: any, i: number) => (
+                        <Badge key={i} variant="secondary">
+                          {cat.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    "Uncategorized"
+                  )}
                 </td>
                 <td className="p-3 text-right">
                   {editingId === transaction.id ? (

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Transaction } from "@/lib/types";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -63,7 +64,8 @@ export default async function DashboardPage() {
       const actual =
         transactions
           ?.filter(
-            (t) => t.categories?.name === category.name && t.type === "expense",
+            (t) =>
+              t.categories?.[0]?.name === category.name && t.type === "expense",
           )
           .reduce((sum, t) => sum + Number(t.amount), 0) ?? 0;
 
@@ -132,7 +134,7 @@ export default async function DashboardPage() {
           <CardContent>
             {transactions && transactions.length > 0 ? (
               <div className="space-y-3">
-                {transactions.map((transaction) => (
+                {transactions.map((transaction: Transaction) => (
                   <div
                     key={transaction.id}
                     className="flex items-center justify-between border-b pb-2"
@@ -141,12 +143,12 @@ export default async function DashboardPage() {
                       <p className="font-medium">
                         {transaction.merchant ||
                           transaction.description ||
-                          transaction.categories?.name ||
+                          transaction.categories?.[0]?.name ||
                           "Transaction"}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {transaction.transaction_date} ·{" "}
-                        {transaction.categories?.name ?? "Uncategorized"}
+                        {transaction.categories?.[0]?.name ?? "Uncategorized"}
                       </p>
                     </div>
 
