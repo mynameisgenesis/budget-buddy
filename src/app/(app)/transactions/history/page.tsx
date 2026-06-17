@@ -20,6 +20,9 @@ export default function TransactionHistoryPage() {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingMerchant, setEditingMerchant] = useState("");
+  const [editingAmount, setEditingAmount] = useState("");
 
   async function loadTransactions() {
     const { data, error } = await supabase
@@ -69,9 +72,57 @@ export default function TransactionHistoryPage() {
       return;
     }
 
-    setTransactions((current) =>
-      current.filter((transaction) => transaction.id !== transactionId),
+    setTransactions((current: Transaction[]) =>
+      current.filter(
+        (transaction: Transaction) => transaction.id !== transactionId,
+      ),
     );
+  }
+
+  async function updateTransaction(transactionId: string) {
+    const { data, error } = await supabase
+      .from("transactions")
+      .update({
+        merchant: editingMerchant,
+        amount: Number(editingAmount),
+      })
+      .eq("id", transactionId)
+      .select(
+        `
+      id,
+      amount,
+      type,
+      merchant,
+      description,
+      transaction_date,
+      categories (
+        name
+      )
+    `,
+      )
+      .single();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    const normalizedData = {
+      ...data,
+      categories: Array.isArray(data?.categories)
+        ? (data.categories[0] ?? null)
+        : (data?.categories ?? null),
+    } as Transaction;
+
+    setTransactions((current: Transaction[]) =>
+      current.map((transaction: Transaction) =>
+        transaction.id === transactionId ? normalizedData : transaction,
+      ),
+    );
+
+    setEditingId(null);
+    setEditingMerchant("");
+    setEditingAmount("");
   }
 
   const filteredTransactions = useMemo(() => {
@@ -137,31 +188,84 @@ export default function TransactionHistoryPage() {
                 </td>
 
                 <td className="p-3">
-                  {transaction.merchant || transaction.description || "-"}
+                  {editingId === transaction.id ? (
+                    <input
+                      className="border rounded p-1 w-full"
+                      value={editingMerchant}
+                      onChange={(e) => setEditingMerchant(e.target.value)}
+                    />
+                  ) : (
+                    transaction.merchant || transaction.description || "-"
+                  )}
                 </td>
-
                 <td className="p-3">
                   {transaction.categories?.name || "Uncategorized"}
                 </td>
-
-                <td
-                  className={`p-3 text-right font-medium ${
-                    transaction.type === "income"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {transaction.type === "income" ? "+" : "-"}$
-                  {Number(transaction.amount).toFixed(2)}
+                <td className="p-3 text-right">
+                  {editingId === transaction.id ? (
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="border rounded p-1 w-28 text-right"
+                      value={editingAmount}
+                      onChange={(e) => setEditingAmount(e.target.value)}
+                    />
+                  ) : (
+                    <span
+                      className={`font-medium ${
+                        transaction.type === "income"
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {transaction.type === "income" ? "+" : "-"}$
+                      {Number(transaction.amount).toFixed(2)}
+                    </span>
+                  )}
                 </td>
 
                 <td className="p-3 text-right">
-                  <button
-                    onClick={() => deleteTransaction(transaction.id)}
-                    className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                  >
-                    Delete
-                  </button>
+                  {editingId === transaction.id ? (
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => updateTransaction(transaction.id)}
+                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                      >
+                        Save
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditingMerchant("");
+                          setEditingAmount("");
+                        }}
+                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingId(transaction.id);
+                          setEditingMerchant(transaction.merchant ?? "");
+                          setEditingAmount(String(transaction.amount));
+                        }}
+                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => deleteTransaction(transaction.id)}
+                        className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
