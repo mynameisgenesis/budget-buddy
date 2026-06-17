@@ -18,7 +18,17 @@ async function createTransaction(formData: FormData) {
   const amount = Number(formData.get("amount"));
   const description = formData.get("description") as string;
   const transactionDate = formData.get("transactionDate") as string;
-  const type = formData.get("type") as string;
+  const { data: category, error: categoryError } = await supabase
+    .from("categories")
+    .select("type")
+    .eq("id", categoryId)
+    .single();
+
+  if (categoryError || !category) {
+    throw new Error("Could not find category type.");
+  }
+
+  const type = category.type;
   const merchant = formData.get("merchant") as string;
 
   const { error } = await supabase.from("transactions").insert({
@@ -49,10 +59,9 @@ export default async function TransactionsPage() {
   if (!user) {
     redirect("/login");
   }
-
   const { data: categories } = await supabase
     .from("categories")
-    .select("*")
+    .select("id, name, type")
     .order("name");
 
   return (
@@ -86,14 +95,6 @@ export default async function TransactionsPage() {
             className="w-full border rounded p-2"
             required
           />
-        </div>
-
-        <div>
-          <label>Type</label>
-          <select name="type" className="w-full border rounded p-2" required>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </select>
         </div>
 
         <div>
