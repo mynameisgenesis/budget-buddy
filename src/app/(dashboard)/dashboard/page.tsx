@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import SpendingPieChart from "@/components/spending-pie-chart";
 import { Transaction } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -25,6 +26,7 @@ export default async function DashboardPage() {
     .select(
       `
     id,
+    category_id,
     amount,
     type,
     description,
@@ -37,8 +39,7 @@ export default async function DashboardPage() {
     )
     .eq("user_id", user.id)
     .gte("transaction_date", startDate)
-    .order("transaction_date", { ascending: false })
-    .limit(8);
+    .order("transaction_date", { ascending: false });
 
   const { data: categories } = await supabase
     .from("categories")
@@ -63,10 +64,7 @@ export default async function DashboardPage() {
     categories?.map((category) => {
       const actual =
         transactions
-          ?.filter(
-            (t) =>
-              t.categories?.[0]?.name === category.name && t.type === "expense",
-          )
+          ?.filter((t) => t.category_id === category.id && t.type === "expense")
           .reduce((sum, t) => sum + Number(t.amount), 0) ?? 0;
 
       const budget = Number(category.monthly_budget);
@@ -80,6 +78,13 @@ export default async function DashboardPage() {
         remaining,
       };
     }) ?? [];
+
+  const chartData = budgetRows
+    .filter((row) => row.actual > 0)
+    .map((row) => ({
+      name: row.name,
+      value: row.actual,
+    }));
 
   return (
     <main className="min-h-screen p-6 space-y-6">
@@ -217,6 +222,18 @@ export default async function DashboardPage() {
               <p className="text-muted-foreground">
                 No expense categories yet.
               </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Spending By Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {chartData.length > 0 ? (
+              <SpendingPieChart data={chartData} />
+            ) : (
+              <p className="text-muted-foreground">No spending data yet.</p>
             )}
           </CardContent>
         </Card>
